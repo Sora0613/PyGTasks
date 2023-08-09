@@ -1,77 +1,62 @@
-from __future__ import print_function
+import os
+import sys
 
-import os.path
+import task_api
 
 #GUI関連
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QTabWidget, QApplication, QHBoxLayout, QVBoxLayout, QLabel, QGridLayout, QLineEdit, QTextEdit, QDesktopWidget
+from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QTabWidget, QApplication, QHBoxLayout, QVBoxLayout, \
+    QLabel, QGridLayout, QLineEdit, QTextEdit, QDesktopWidget, QComboBox
 from PyQt5.QtCore import pyqtSlot, QUrl
 from PyQt5.QtGui import QIcon
 #from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineDownloadItem
 
+class MainWidget(QWidget):
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+    def __init__(self):
+        super().__init__()
+        self.initUI()
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/tasks']
+    def initUI(self):
+        creds = task_api.authorize()
 
-# ユーザー認証系
-creds = None
-if os.path.exists('token.json') :
-    creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-if not creds or not creds.valid :
-    if creds and creds.expired and creds.refresh_token :
-        creds.refresh(Request())
-    else :
-        flow = InstalledAppFlow.from_client_secrets_file(
-            'credentials.json', SCOPES)
-        creds = flow.run_local_server(port=0)
-    with open('token.json', 'w') as token :
-        token.write(creds.to_json())
+        self.resize(250, 150)
+        self.move(300, 300)
+        self.setWindowTitle('sample')
 
-#タスクの関数
-def get_task_lists() :
-    service = build('tasks', 'v1', credentials=creds)
-    # Call the Tasks API
-    results = service.tasklists().list(maxResults=10).execute()
-    items = results.get('items', [])
+        self.grid = QGridLayout()
+        self.tasks_combo = QComboBox()
+        self.task_lists_combo = QComboBox()
+        self.button = QPushButton('get task list')
+        self.task_add_button = QPushButton('add task')
+        self.task_delete_button = QPushButton('delete task')
+        self.label = QLabel('')
 
-    if not items :
-        print('No task lists found.')
-        return
+        self.tasks_combo.addItems(task_api.get_task_dict_values(creds))
+        self.task_lists_combo.addItems(task_api.get_task_lists(creds))
 
-    return items
+        self.button.clicked.connect(lambda: self.label.setText(self.combo.currentText()))
 
-def add_task(tasklist, title, note) :
-    service = build('tasks', 'v1', credentials=creds)
-    task = {
-        'title' : title,
-        'notes' : note,
-        'due' : ""
-    }
-    result = service.tasks().insert(tasklist=tasklist, body=task).execute() #tasklistはtasklistのid
-    print(result)
+        print(self.combo.currentText())
 
-def delete_task(tasklist, task) :
-    service = build('tasks', 'v1', credentials=creds)
-    result = service.tasks().delete(tasklist=tasklist, task=task).execute() #tasklist, taskはそれぞれのid
-    print(result)
+        # レイアウト配置
+        self.grid.addWidget(self.button, 1, 0, 1, 1)
+        self.grid.addWidget(self.label, 2, 0, 1, 2)
+        self.grid.addWidget(self.tasks_combo, 0, 0, 1, 1)
+        self.grid.addWidget(self.task_lists_combo, 3, 0, 1, 1)
 
+        self.setLayout(self.grid)
+
+
+        #
+        self.show()
 
 def main() :
+    #creds = task_api.authorize()
 
-    options = {}
-
-    items = get_task_lists()
-
-    for item in items :
-        options.setdefault(item['id'], item['title'])
-
-    print(options)
-
+    app = QApplication(sys.argv)
+    main_window = MainWidget()
+    main_window.show()
+    sys.exit(app.exec_())
 
 if __name__ == '__main__' :
     main()

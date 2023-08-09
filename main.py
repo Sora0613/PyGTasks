@@ -6,7 +6,7 @@ import os.path
 from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QTabWidget, QApplication, QHBoxLayout, QVBoxLayout, QLabel, QGridLayout, QLineEdit, QTextEdit, QDesktopWidget
 from PyQt5.QtCore import pyqtSlot, QUrl
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineDownloadItem
+#from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineDownloadItem
 
 
 from google.auth.transport.requests import Request
@@ -62,9 +62,6 @@ def delete_task(tasklist, task) :
 
 
 def main() :
-    root = Tk()
-    root.title("Google Tasks")
-    root.geometry("500x500")
 
     options = {}
 
@@ -74,13 +71,6 @@ def main() :
         options.setdefault(item['id'], item['title'])
 
     print(options)
-
-    clicked = StringVar()
-    clicked.set("")
-    drop = OptionMenu(root, clicked, *options.values())
-    drop.pack()
-
-    root.mainloop()
 
 
 if __name__ == '__main__' :

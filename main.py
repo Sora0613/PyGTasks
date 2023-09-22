@@ -1,62 +1,140 @@
-import os
 import sys
 
-import task_api
+import PyGTasks as gt
 
-#GUI関連
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QTabWidget, QApplication, QHBoxLayout, QVBoxLayout, \
-    QLabel, QGridLayout, QLineEdit, QTextEdit, QDesktopWidget, QComboBox
-from PyQt5.QtCore import pyqtSlot, QUrl
-from PyQt5.QtGui import QIcon
-#from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEngineDownloadItem
+# GUI関連
+from PyQt5.QtWidgets import *
 
-class MainWidget(QWidget):
-
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-
-    def initUI(self):
-        creds = task_api.authorize()
-
-        self.resize(250, 150)
-        self.move(300, 300)
-        self.setWindowTitle('sample')
-
-        self.grid = QGridLayout()
-        self.tasks_combo = QComboBox()
-        self.task_lists_combo = QComboBox()
-        self.button = QPushButton('get task list')
-        self.task_add_button = QPushButton('add task')
-        self.task_delete_button = QPushButton('delete task')
-        self.label = QLabel('')
-
-        self.tasks_combo.addItems(task_api.get_task_dict_values(creds))
-        self.task_lists_combo.addItems(task_api.get_task_lists(creds))
-
-        self.button.clicked.connect(lambda: self.label.setText(self.combo.currentText()))
-
-        print(self.combo.currentText())
-
-        # レイアウト配置
-        self.grid.addWidget(self.button, 1, 0, 1, 1)
-        self.grid.addWidget(self.label, 2, 0, 1, 2)
-        self.grid.addWidget(self.tasks_combo, 0, 0, 1, 1)
-        self.grid.addWidget(self.task_lists_combo, 3, 0, 1, 1)
-
-        self.setLayout(self.grid)
+from Design.add_popup import Ui_Form
+from Design.taskmanager import Ui_Main
 
 
-        #
-        self.show()
+class Main_Window(QDialog) :
+    def __init__(self, parent=None) :
+        super(Main_Window, self).__init__(parent)
+        self.ui = Ui_Main()
+        self.ui.setupUi(self)
 
-def main() :
-    #creds = task_api.authorize()
+        self.w = None
 
-    app = QApplication(sys.argv)
-    main_window = MainWidget()
-    main_window.show()
-    sys.exit(app.exec_())
+        self.refresh()
+        self.task_refresh()
+
+        self.ui.pushButton_refresh.clicked.connect(self.refresh)
+        self.ui.pushButton_add.clicked.connect(self.show_new_window)
+        self.ui.pushButton_delete.clicked.connect(self.delete)
+        self.ui.pushButton.clicked.connect(self.done)
+        self.ui.comboBox_lists.currentIndexChanged.connect(self.task_refresh)
+
+    def show_new_window(self, checked) :
+        if self.w is None :
+            self.w = Sub_Window()
+            self.w.show()
+        else :
+            self.w.close()  # Close window.
+            self.w = None  # Discard reference.
+
+    ###タスク系の処理###
+
+    def refresh(self) :  # リストの取得を行う
+        self.ui.comboBox_lists.clear()
+        creds = gt.authorize()
+        list_names = gt.get_list(creds)
+        self.ui.comboBox_lists.addItems(list_names.keys())
+
+    def task_refresh(self) :  # タスクの取得を行う
+        creds = gt.authorize()
+        tasklist_selected = self.ui.comboBox_lists.currentText()
+        list_names = gt.get_list(creds)
+        list_id_selected = list_names.get(tasklist_selected)
+        if list_id_selected != None :
+            self.ui.listWidget.clear()
+            items = gt.get_tasks_in_tasklist(creds, list_id_selected)
+            for item in items:
+                self.ui.listWidget.addItem(item)
+
+
+    def show_new_window(self, checked) :
+        if self.w is None :
+            self.w = Sub_Window()
+            self.w.show()
+        else :
+            self.w.close()  # Close window.
+            self.w = None  # Discard reference.
+
+    def delete(self) :  # listから選択しているものをgetして削除する
+        creds = gt.authorize()
+        tasklist_selected = self.ui.comboBox_lists.currentText()
+        list_names = gt.get_list(creds)
+        list_id_selected = list_names.get(tasklist_selected)
+
+        selected = self.ui.listWidget.currentItem().text()
+        print(selected)
+
+        tasks = gt.get_tasks_in_tasklist(creds, list_id_selected)
+        selected_task_id = tasks.get(selected)
+
+        gt.delete_task(creds, list_id_selected, selected_task_id)
+
+        self.task_refresh()
+
+        print("deleted.")
+
+    def done(self) :
+        creds = gt.authorize()
+        tasklist_selected = self.ui.comboBox_lists.currentText()
+        list_names = gt.get_list(creds)
+        list_id_selected = list_names.get(tasklist_selected)
+
+        selected = self.ui.listWidget.currentItem().text()
+        print(selected)
+
+        tasks = gt.get_tasks_in_tasklist(creds, list_id_selected)
+        selected_task_id = tasks.get(selected)
+
+        gt.done_task(creds, list_id_selected, selected, selected_task_id)
+
+        self.task_refresh()
+
+
+class Sub_Window(QDialog) :
+    def __init__(self, parent=None) :
+        super(Sub_Window, self).__init__(parent)
+
+        self.ui = Ui_Form()
+        self.ui.setupUi(self)
+
+        self.main = Main_Window()
+
+        self.ui.pushButton.clicked.connect(self.add_task)
+
+    def add_task(self) :
+        title = self.ui.lineEdit.text()
+        note = self.ui.lineEdit_2.text()
+
+        creds = gt.authorize()
+        tasklist_selected = (self.main.ui.comboBox_lists.currentText())
+        list_id_selected = gt.get_list(creds).get(tasklist_selected)
+
+        if title is None:
+            print("title is None")
+            return
+        else:
+            print("title : " + title)
+            print("note : " + note)
+
+            gt.add_task(creds, list_id_selected, title, note)  # タスクを追加
+            print("task added")
+
+            self.main.refresh()
+            self.main.task_refresh()
+
+            self.close()
+
+
 
 if __name__ == '__main__' :
-    main()
+    app = QApplication(sys.argv)
+    window = Main_Window()
+    window.show()
+    sys.exit(app.exec_())

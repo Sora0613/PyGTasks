@@ -5,7 +5,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
 
-def authorize() :
+def authorize() : #認証を行う
     SCOPES = ['https://www.googleapis.com/auth/tasks']
     creds = None
     if os.path.exists('token.json') :
@@ -21,7 +21,7 @@ def authorize() :
             token.write(creds.to_json())
     return creds
 
-def get_task_lists(creds) :
+def exist_lists(creds) :
     service = build('tasks', 'v1', credentials=creds)
     # Call the Tasks API
     results = service.tasklists().list(maxResults=10).execute()
@@ -32,6 +32,28 @@ def get_task_lists(creds) :
         return
 
     return items
+
+def get_list(creds) : #タスクリストのIDと名前を取得する。返り値は辞書型。
+    options = {}
+
+    items = exist_lists(creds)
+
+    for item in items :
+        options.setdefault(item['title'], item['id'])
+
+    return options
+
+def get_tasks_in_tasklist(creds, tasklist) : #特定のタスクリストから未完了のタスクのみを取得する。返り値は辞書型。
+    service = build('tasks', 'v1', credentials=creds)
+    tasks = service.tasks().list(tasklist=tasklist).execute()
+    options = {}
+    #print(tasks)
+    for task in tasks['items'] :
+        if task['status'] != 'completed' and task['title']:
+            options.setdefault(task['title'], task['id'])
+            #print(task['title'])
+
+    return options
 
 def add_task(creds, tasklist, title, note) :
     service = build('tasks', 'v1', credentials=creds)
@@ -57,25 +79,3 @@ def done_task(creds, tasklist, task_title, task_id) : #引数にタスクのid�
     }
     result = service.tasks().update(tasklist=tasklist, task=task).execute()  # tasklist, taskはそれぞれのid
     print(result)
-
-def get_tasklist_id_title(creds) :
-    options = {}
-
-    items = get_task_lists(creds)
-
-    for item in items :
-        options.setdefault(item['title'], item['id'])
-
-    return options
-
-def get_tasks_in_tasklist(creds, tasklist) :
-    service = build('tasks', 'v1', credentials=creds)
-    tasks = service.tasks().list(tasklist=tasklist).execute()
-    options = {}
-    #print(tasks)
-    for task in tasks['items'] :
-        if task['status'] != 'completed' and task['title']:
-            options.setdefault(task['title'], task['id'])
-            #print(task['title'])
-
-    return options

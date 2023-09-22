@@ -48,32 +48,34 @@ def delete_task(creds, tasklist, task) :
     result = service.tasks().delete(tasklist=tasklist, task=task).execute() #tasklist, taskはそれぞれのid
     print(result)
 
-def get_task_dict_values(creds) :
+def done_task(creds, tasklist, task_title, task_id) : #引数にタスクのidを渡し、statusをcompletedにする
+    service = build('tasks', 'v1', credentials=creds)
+    task = {
+        "title" : task_title,
+        "id" : task_id,
+        'status' : 'completed'
+    }
+    result = service.tasks().update(tasklist=tasklist, task=task).execute()  # tasklist, taskはそれぞれのid
+    print(result)
+
+def get_tasklist_id_title(creds) :
     options = {}
 
     items = get_task_lists(creds)
 
     for item in items :
-        options.setdefault(item['id'], item['title'])
+        options.setdefault(item['title'], item['id'])
 
-    return options.values()
-
-def get_task_dict_keys(creds) :
-    options = {}
-
-    items = get_task_lists(creds)
-
-    for item in items :
-        options.setdefault(item['id'], item['title'])
-
-    return options.keys()
+    return options
 
 def get_tasks_in_tasklist(creds, tasklist) :
     service = build('tasks', 'v1', credentials=creds)
     tasks = service.tasks().list(tasklist=tasklist).execute()
-    options = []
+    options = {}
     #print(tasks)
     for task in tasks['items'] :
-        if task['title'] :
-            options.append(task['title'])
-            print(task['title'])
+        if task['status'] != 'completed' and task['title']:
+            options.setdefault(task['title'], task['id'])
+            #print(task['title'])
+
+    return options

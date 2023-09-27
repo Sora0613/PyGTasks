@@ -1,9 +1,10 @@
+import os
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-import os
+
 
 def authorize() : #認証を行う
     SCOPES = ['https://www.googleapis.com/auth/tasks']
@@ -70,12 +71,13 @@ def delete_task(creds, tasklist, task) :
     result = service.tasks().delete(tasklist=tasklist, task=task).execute() #tasklist, taskはそれぞれのid
     print(result)
 
-def done_task(creds, tasklist, task_title, task_id) : #引数にタスクのidを渡し、statusをcompletedにする
-    service = build('tasks', 'v1', credentials=creds)
-    task = {
-        "title" : task_title,
-        "id" : task_id,
-        'status' : 'completed'
-    }
-    result = service.tasks().update(tasklist=tasklist, task=task).execute()  # tasklist, taskはそれぞれのid
-    print(result)
+def done_task(creds, tasklist, task_id) : #引数にタスクのidを渡し、statusをcompletedにする
+    try:
+        service = build('tasks', 'v1', credentials=creds)
+        task = service.tasks().get(tasklist=tasklist, task=task_id).execute()
+        task['status'] = 'completed'
+        updated_task = service.tasks().update(tasklist=tasklist, task=task_id, body=task).execute()
+        print(updated_task)
+
+    except Exception as e:
+        print('An error occurred:', str(e))

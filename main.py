@@ -16,6 +16,7 @@ class Main_Window(QDialog) :
         self.ui.setupUi(self)
 
         self.w = None
+        self.creds = gt.authorize()
 
         self.refresh()
         self.task_refresh()
@@ -26,75 +27,58 @@ class Main_Window(QDialog) :
         self.ui.pushButton.clicked.connect(self.done)
         self.ui.comboBox_lists.currentIndexChanged.connect(self.task_refresh)
 
-    def show_new_window(self, checked) :
+    def show_new_window(self) :
         if self.w is None :
             self.w = Sub_Window()
             self.w.show()
         else :
-            self.w.close()  # Close window.
-            self.w = None  # Discard reference.
+            self.w.close()
+            self.w = None
 
     ###タスク系の処理###
 
     def refresh(self) :  # リストの取得を行う
         self.ui.comboBox_lists.clear()
-        creds = gt.authorize()
-        list_names = gt.get_list(creds)
+        list_names = gt.get_list(self.creds)
         self.ui.comboBox_lists.addItems(list_names.keys())
 
     def task_refresh(self) :  # タスクの取得を行う
-        creds = gt.authorize()
         tasklist_selected = self.ui.comboBox_lists.currentText()
-        list_names = gt.get_list(creds)
+        list_names = gt.get_list(self.creds)
         list_id_selected = list_names.get(tasklist_selected)
-        if list_id_selected != None :
+        if list_id_selected is not None :
             self.ui.listWidget.clear()
-            items = gt.get_tasks_in_tasklist(creds, list_id_selected)
-            for item in items:
+            items = gt.get_tasks_in_tasklist(self.creds, list_id_selected)
+            for item in items :
                 self.ui.listWidget.addItem(item)
 
-
-    def show_new_window(self, checked) :
-        if self.w is None :
-            self.w = Sub_Window()
-            self.w.show()
-        else :
-            self.w.close()  # Close window.
-            self.w = None  # Discard reference.
-
     def delete(self) :  # listから選択しているものをgetして削除する
-        creds = gt.authorize()
         tasklist_selected = self.ui.comboBox_lists.currentText()
-        list_names = gt.get_list(creds)
+        list_names = gt.get_list(self.creds)
         list_id_selected = list_names.get(tasklist_selected)
 
         selected = self.ui.listWidget.currentItem().text()
-        print(selected)
 
-        tasks = gt.get_tasks_in_tasklist(creds, list_id_selected)
+        tasks = gt.get_tasks_in_tasklist(self.creds, list_id_selected)
         selected_task_id = tasks.get(selected)
 
-        gt.delete_task(creds, list_id_selected, selected_task_id)
+        gt.delete_task(self.creds, list_id_selected, selected_task_id)
 
         self.task_refresh()
-
-        print("deleted.")
 
     def done(self) :
-        creds = gt.authorize()
         tasklist_selected = self.ui.comboBox_lists.currentText()
-        list_names = gt.get_list(creds)
+        list_names = gt.get_list(self.creds)
         list_id_selected = list_names.get(tasklist_selected)
 
-        selected = self.ui.listWidget.currentItem().text()
-        print(selected)
+        tasks = gt.get_tasks_in_tasklist(self.creds, list_id_selected)
 
-        tasks = gt.get_tasks_in_tasklist(creds, list_id_selected)
-        selected_task_id = tasks.get(selected)
+        if self.ui.listWidget.currentItem() is not None :
+            selected_task_id = tasks.get(self.ui.listWidget.currentItem().text())
 
-        gt.done_task(creds, list_id_selected, selected, selected_task_id)
+            gt.done_task(self.creds, list_id_selected, selected_task_id)
 
-        self.task_refresh()
+            self.task_refresh()
 
 
 class Sub_Window(QDialog) :
@@ -104,6 +88,8 @@ class Sub_Window(QDialog) :
         self.ui = Ui_Form()
         self.ui.setupUi(self)
 
+        self.creds = gt.authorize()
+
         self.main = Main_Window()
 
         self.ui.pushButton.clicked.connect(self.add_task)
@@ -112,23 +98,12 @@ class Sub_Window(QDialog) :
         title = self.ui.lineEdit.text()
         note = self.ui.lineEdit_2.text()
 
-        creds = gt.authorize()
         tasklist_selected = (self.main.ui.comboBox_lists.currentText())
-        list_id_selected = gt.get_list(creds).get(tasklist_selected)
+        list_id_selected = gt.get_list(self.creds).get(tasklist_selected)
 
-        if title is None:
-            print("title is None")
-            return
-        else:
-            print("title : " + title)
-            print("note : " + note)
-
-            gt.add_task(creds, list_id_selected, title, note)  # タスクを追加
-            print("task added")
-
-            self.main.refresh()
+        if title is not None :
+            gt.add_task(self.creds, list_id_selected, title, note)  # タスクを追加
             self.main.task_refresh()
-
             self.close()
 
 
